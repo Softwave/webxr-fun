@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Hello, WebVR! • A-Frame</title>
+    <meta name="description" content="Hello, WebVR! • A-Frame">
+    <script src="https://aframe.io/releases/1.1.0/aframe.min.js"></script>
+  <script src="aframe-extras.controls.js"></script>
+
+  </head>
+  <body>
+    <a-assets>
+      <img src="https://img.gs/bbdkhfbzkk/stretch/https://i.imgur.com/25P1geh.png" id="grid" crossorigin="anonymous">
+      <img id="sky" src="https://cdn.glitch.com/5cda560f-91ca-42be-848b-ae1af59831ca%2FnewSky.png?v=1607976309654" crossorigin="anonymous" />
+    </a-assets>
+    <a-scene>
+      
+      <!-- Player -->
+      <a-entity id="rig" movement-controls position="0 0 0">
+        <a-entity id="camera"
+                  camera
+                  position="0 1.6 0"
+                  look-controls="pointerLockEnabled: true"></a-entity>
+      </a-entity>
+      <!--
+      <a-sphere position="3 1.25 -5" radius="1.25" color="#ff00aa" shadow></a-sphere>
+      <a-sphere position="-3 1.25 2" radius="0.5" color="#ff00aa" shadow></a-sphere>
+      <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E" shadow></a-sphere>
+      <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D" shadow></a-cylinder>
+      <a-plane position="0 0 -4" rotation="-90 0 0" width="16" height="16" color="#7BC8A4" shadow></a-plane>
+      -->
+      <a-plane position="0 0 -4" rotation="-90 0 0" width="4" height="4" color="#F48BCA" shadow></a-plane>
+      <a-octahedron detail="2" height="1" width="1" depth="1" position="0 1.0 -4" animation="property: rotation; to: 0- 360 -10; dur: 6000; easing: linear; loop: true" material="shader:distorto;">
+      </a-octahedron>
+      <a-entity
+        geometry="primitive: plane; width: 10000; height: 10000;" rotation="-90 0 0"
+        material="src: #grid; repeat: 10000 10000; color:#ff00aa; transparent: true;metalness:0.6; roughness: 0.4; sphericalEnvMap: #sky;"></a-entity>
+      
+      
+  
+    
+      
+      <a-sky src="#sky" rotation="0 -90 0"></a-sky>
+    </a-scene>
+    <script>
+    
+    AFRAME.registerComponent('normal-material', {
+
+	multiple: true,
+
+  init: function (){
+    var material = new THREE.MeshNormalMaterial();
+    var geometry = this.el.getObject3D('mesh').geometry;
+    this.el.setObject3D('mesh', new THREE.Mesh(geometry, material));
+  },
+
+  remove: function(){
+    this.el.removeObject3D('mesh');
+  }
+
+});
+      
+      AFRAME.registerShader('grid-glitch', {
+  schema: {
+    color: {type: 'color', is: 'uniform'},
+    timeMsec: {type: 'time', is: 'uniform'}
+  },
+
+  vertexShader: `
+varying vec2 vUv;
+
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+}
+`,
+  fragmentShader: `
+varying vec2 vUv;
+uniform vec3 color;
+uniform float timeMsec; // A-Frame time in milliseconds.
+
+void main() {
+  float time = timeMsec / 1000.0; // Convert from A-Frame milliseconds to typical time in seconds.
+  // Use sin(time), which curves between 0 and 1 over time,
+  // to determine the mix of two colors:
+  //    (a) Dynamic color where 'R' and 'B' channels come
+  //        from a modulus of the UV coordinates.
+  //    (b) Base color.
+  // 
+  // The color itself is a vec4 containing RGBA values 0-1.
+  gl_FragColor = mix(
+    vec4(mod(vUv , 0.05) * 20.0, 1.0, 1.0),
+    vec4(color, 1.0),
+    sin(time)
+  );
+}
+`
+});
+      
+AFRAME.registerShader('distorto', {
+  schema: {
+    timeMsec: {type: 'time', is: 'uniform'}
+  },
+
+  vertexShader: `
+  uniform float timeMsec;
+varying vec3 vPosition;
+varying vec3 vNormal; 
+void main() {
+vNormal = normal;
+vPosition = position;
+vPosition.x *= sin(vPosition.z * timeMsec / 64.0);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4( vPosition, 1.0 );
+}
+`,
+  fragmentShader: `
+  uniform float timeMsec;
+varying vec3 vPosition;
+varying vec3 vNormal; 
+void main() {
+	vec3 col = vNormal.xyz * 0.5 + 0.5;
+	gl_FragColor = vec4(col, 1.0);
+}
+`
+});
+      
+    </script>
+  </body>
+</html>
